@@ -15,11 +15,6 @@ struct Vec4f {
   double w;
 };
 
-std::ostream& operator<<(std::ostream& stream, const Vec4f& vec) {
-  stream << "[" << vec.x << ", " << vec.y << ", " << vec.z << ", " << vec.w << "]";
-  return stream;
-}
-
 struct Vec2f {
   double x;
   double y;
@@ -94,24 +89,9 @@ class Mat4 {
       }};
     }
 
-    friend std::ostream& operator<<(std::ostream& stream, const Mat4& mat);
-
   private:
     std::array<double, 4 * 4> m_data;
 };
-
-std::ostream& operator<<(std::ostream& stream, const Mat4& mat) {
-  stream << "[ ";
-  for (uint32_t r = 0; r < 4; ++r) {
-    for (uint32_t c = 0; c < 4; ++c) {
-      stream << mat.at(c, r) << (c < 3 ? ", " : "");
-    }
-    stream << std::endl << (r < 3 ? "  " : "");
-  }
-  stream << " ]";
-
-  return stream;
-}
 
 Mat4 constructModelMatrix(const Vec3f& t, double a) {
   Mat4 m{{
@@ -217,7 +197,7 @@ void drawScene(const std::vector<Vec2f>& projection) {
 
 int main() {
   try {
-    const auto dt = std::chrono::milliseconds{300};
+    const auto dt = std::chrono::milliseconds{100};
     const double da = 0.1 * PI;
     double angle = 0.0;
     double xOffset = 0.0;
