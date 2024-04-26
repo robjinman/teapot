@@ -11,9 +11,7 @@ add_executable(teapot ${CPP_SOURCES})
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   target_compile_options(teapot PRIVATE /W4 /O2)
-  #target_link_options(teapot PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:WinMainCRTStartup)
+  target_link_options(teapot PRIVATE /SUBSYSTEM:WINDOWS)
 else()
   target_compile_options(teapot PRIVATE -Wall -Wextra -O3)
 endif()
-
-file(COPY "${PROJECT_SOURCE_DIR}/teapot.obj" DESTINATION "${PROJECT_BINARY_DIR}")

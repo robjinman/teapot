@@ -1,14 +1,13 @@
+#include "teapot.hpp"
 #include <windows.h>
 #include <tchar.h>
 #include <iostream>
 #include <array>
-#include <fstream>
-#include <vector>
-#include <sstream>
 #include <chrono>
 #include <thread>
 #include <cmath>
 #include <cstring>
+#include <cassert>
 #include <map>
 
 #undef near
@@ -273,9 +272,6 @@ Mat4 constructModelMatrix(const Vec3f& t, double a) {
 
 Mat4 constructViewMatrix() {
   Mat4 m;
-
-  // TODO
-
   return m;
 }
 
@@ -299,42 +295,6 @@ Mat4 constructProjectionMatrix(double fovY, double aspect, double near, double f
   return m;
 }
 
-std::vector<Vec4f> loadModel(const std::string& path) {
-  std::ifstream stream(path);
-  if (!stream.good()) {
-    throw std::runtime_error(std::string("Could not open file '") + path + "'");
-  }
-
-  std::vector<Vec4f> model;
-  char vChar = '_';
-  std::stringstream ss;
-  Vec4f vertex;
-
-  while (!stream.eof()) {
-    std::string line;
-    std::getline(stream, line);
-
-    ss.str(line);
-    ss.clear();
-    ss.seekg(0);
-    vChar = '_';
-
-    ss >> vChar;
-    if (vChar != 'v') {
-      break;
-    }
-
-    ss >> vertex.x;
-    ss >> vertex.y;
-    ss >> vertex.z;
-    vertex.w = 1.0;
-
-    model.push_back(std::move(vertex));
-  }
-
-  return model;
-}
-
 void drawScene(const std::vector<Vec2f>& projection, Bitmap& canvas) {
   canvas.clear();
 
@@ -348,7 +308,7 @@ void drawScene(const std::vector<Vec2f>& projection, Bitmap& canvas) {
   }
 }
 
-int main() {
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
   const int width = 640;
   const int height = 480;
 
@@ -367,14 +327,15 @@ int main() {
     Mat4 viewTransform = constructViewMatrix();
     Mat4 projectionTransform = constructProjectionMatrix(45.0, 1.0, 0.1, 100.0);
 
-    std::vector<Vec4f> model = loadModel("teapot.obj");
-
     Bitmap canvas(width, height);
+
+    assert(teapot.size() % 3 == 0);
 
     while (window.update()) {
       std::vector<Vec2f> projection;
-      for (auto& v : model) {
-        Vec4f p = projectionTransform * (viewTransform * (modelTransform * v));
+      for (size_t i = 0; i < teapot.size(); i += 3) {
+        Vec4f v{teapot[i + 0], teapot[i + 1], teapot[i + 2], 1};
+        Vec4f p = projectionTransform * viewTransform * modelTransform * v;
         Vec3f p_{ p.x / p.w, p.y / p.w, p.z / p.w };
 
         if (p_.x >= -1.0 && p_.x <= 1.0
