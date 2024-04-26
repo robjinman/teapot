@@ -25,18 +25,18 @@ class WinIO {
       m_hInstance = GetModuleHandle(NULL);
 
       WNDCLASSEX wcex{};
-      wcex.cbSize         = sizeof(WNDCLASSEX);
-      wcex.style          = CS_HREDRAW | CS_VREDRAW;
-      wcex.lpfnWndProc    = WinIO::wndProc;
-      wcex.cbClsExtra     = 0;
-      wcex.cbWndExtra     = 0;
-      wcex.hInstance      = m_hInstance;
-      wcex.hIcon          = LoadIcon(wcex.hInstance, IDI_APPLICATION);
-      wcex.hCursor        = LoadCursor(NULL, IDC_ARROW);
-      wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW + 1);
-      wcex.lpszMenuName   = NULL;
-      wcex.lpszClassName  = ClassName;
-      wcex.hIconSm        = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+      wcex.cbSize = sizeof(WNDCLASSEX);
+      wcex.style = CS_HREDRAW | CS_VREDRAW;
+      wcex.lpfnWndProc = WinIO::wndProc;
+      wcex.cbClsExtra = 0;
+      wcex.cbWndExtra = 0;
+      wcex.hInstance = m_hInstance;
+      wcex.hIcon = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+      wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+      wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+      wcex.lpszMenuName = NULL;
+      wcex.lpszClassName = ClassName;
+      wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
       if (!RegisterClassEx(&wcex)) {
         throw std::runtime_error("Error creating window; Failed to register window class");
@@ -44,8 +44,9 @@ class WinIO {
 
       const TCHAR title[] = _T("Teapot");
 
-      m_hWnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, ClassName, title, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, m_width, m_height, NULL, NULL, m_hInstance, NULL);
+      m_hWnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, ClassName, title,
+        WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, m_width, m_height, NULL,
+        NULL, m_hInstance, NULL);
 
       if (!m_hWnd) {
         throw std::runtime_error("Error creating window");
