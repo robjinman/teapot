@@ -169,11 +169,6 @@ struct Vec2f {
   double y;
 };
 
-struct Vec2i {
-  int x;
-  int y;
-};
-
 struct Vec3f {
   double x;
   double y;
@@ -260,7 +255,7 @@ struct Bitmap {
     data[y * width * 4 + x * 4 + 0] = b;
     data[y * width * 4 + x * 4 + 1] = g;
     data[y * width * 4 + x * 4 + 2] = r;
-    data[y * width * 4 + x * 4 + 3] = 1;
+    data[y * width * 4 + x * 4 + 3] = 255;
   }
 };
 
@@ -300,15 +295,16 @@ Mat4 constructProjectionMatrix(double fovY, double aspect, double near, double f
   return m;
 }
 
-void drawScene(const std::vector<Vec2f>& projection, Bitmap& canvas) {
+void drawScene(const std::vector<Vec3f>& projection, Bitmap& canvas) {
   canvas.clear();
 
   for (auto pt : projection) {
     uint32_t x = static_cast<uint32_t>(canvas.width * ((pt.x + 1.0) / 2.0) + 0.5);
     uint32_t y = static_cast<uint32_t>(canvas.height * ((pt.y + 1.0) / 2.0) + 0.5);
+    uint8_t z = static_cast<uint8_t>(((pt.z + 1.0) / 2.0) * 256.0);
 
     if (x < canvas.width && y < canvas.height) {
-      canvas.setPixel(x, y, 0, 255, 0);
+      canvas.setPixel(x, y, z, 255 - z, z);
     }
   }
 }
@@ -330,14 +326,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     double zOffset = -8.0;
     Mat4 modelTransform = constructModelMatrix(Vec3f{ xOffset, yOffset, zOffset }, angle);
     Mat4 viewTransform = constructViewMatrix();
-    Mat4 projectionTransform = constructProjectionMatrix(45.0, 1.0, 0.1, 100.0);
+    Mat4 projectionTransform = constructProjectionMatrix(45.0, 1.0, 5.0, 12.0);
 
     Bitmap canvas(width, height);
 
     assert(teapot.size() % 3 == 0);
 
     while (window.update()) {
-      std::vector<Vec2f> projection;
+      std::vector<Vec3f> projection;
       for (size_t i = 0; i < teapot.size(); i += 3) {
         Vec4f v{teapot[i + 0], teapot[i + 1], teapot[i + 2], 1};
         Vec4f p = projectionTransform * viewTransform * modelTransform * v;
@@ -347,7 +343,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
           && p_.y >= -1.0 && p_.y <= 1.0
           && p_.z >= -1.0 && p_.z <= 1.0) {
 
-          projection.push_back(Vec2f{p_.x, p_.y});
+          projection.push_back(p_);
         }
       }
 
