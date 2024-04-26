@@ -5,6 +5,8 @@
 #include <sstream>
 #include <chrono>
 #include <thread>
+#include <cmath>
+#include <cstring>
 
 const double PI = 3.14159265359;
 
@@ -121,7 +123,7 @@ Mat4 constructProjectionMatrix(double fovY, double aspect, double near, double f
   const double l = -r;
 
   m.set(0, 0, 2.0 * near / (r - l));
-  m.set(2, 0, -(r + l) / (r - l));
+  m.set(2, 0, (r + l) / (r - l));
   m.set(1, 1, 2.0 * near / (t - b));
   m.set(2, 1, (t + b) / (t - b));
   m.set(2, 2, -(far + near) / (far - near));
@@ -184,7 +186,11 @@ void drawScene(const std::vector<Vec2f>& projection) {
     }
   }
 
-  system("CLS");
+#ifdef _WIN32
+  std::system("cls");
+#else
+  std::system("clear");
+#endif
 
   for (int j = h - 1; j >= 0; --j) {
     for (uint32_t i = 0; i < w; ++i) {

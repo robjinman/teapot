@@ -9,6 +9,10 @@ file(GLOB CPP_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cpp")
 
 add_executable(teapot ${CPP_SOURCES})
 
-target_compile_options(teapot PRIVATE /W4 /O2)
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+  target_compile_options(teapot PRIVATE /W4 /O2)
+else()
+  target_compile_options(teapot PRIVATE -Wall -Wextra -O3)
+endif()
 
 file(COPY "${PROJECT_SOURCE_DIR}/teapot.obj" DESTINATION "${PROJECT_BINARY_DIR}")
