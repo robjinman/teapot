@@ -42,11 +42,9 @@ class WinIO {
         throw std::runtime_error("Error creating window; Failed to register window class");
       }
 
-      const TCHAR title[] = _T("Teapot");
-
-      m_hWnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, ClassName, title,
-        WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, m_width, m_height, NULL,
-        NULL, m_hInstance, NULL);
+      m_hWnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, ClassName, _T("Teapot"),
+        WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, m_width, m_height,
+        NULL, NULL, m_hInstance, NULL);
 
       if (!m_hWnd) {
         throw std::runtime_error("Error creating window");
