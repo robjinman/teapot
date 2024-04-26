@@ -1,4 +1,5 @@
 #include "teapot.hpp"
+#undef UNICODE
 #include <windows.h>
 #include <tchar.h>
 #include <iostream>
@@ -8,6 +9,7 @@
 #include <cmath>
 #include <cstring>
 #include <cassert>
+#include <sstream>
 #include <map>
 
 #undef near
@@ -24,6 +26,10 @@ class WinIO {
 
       m_hInstance = GetModuleHandle(NULL);
 
+      std::stringstream ss;
+      ss << "WinIO" << m_nextId++;
+      m_name = ss.str();
+
       WNDCLASSEX wcex{};
       wcex.cbSize = sizeof(WNDCLASSEX);
       wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -35,14 +41,14 @@ class WinIO {
       wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
       wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
       wcex.lpszMenuName = NULL;
-      wcex.lpszClassName = ClassName;
+      wcex.lpszClassName = m_name.c_str();
       wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
       if (!RegisterClassEx(&wcex)) {
         throw std::runtime_error("Error creating window; Failed to register window class");
       }
 
-      m_hWnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, ClassName, _T("Teapot"),
+      m_hWnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, m_name.c_str(), "Teapot",
         WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, m_width, m_height,
         NULL, NULL, m_hInstance, NULL);
 
@@ -97,12 +103,10 @@ class WinIO {
         DestroyWindow(m_hWnd);
       }
 
-      UnregisterClass(ClassName, m_hInstance);
+      UnregisterClass(m_name.c_str(), m_hInstance);
     }
 
   private:
-    static TCHAR ClassName[];
-
     bool m_hasClosed;
     HWND m_hWnd;
     HINSTANCE m_hInstance;
@@ -111,7 +115,9 @@ class WinIO {
     BITMAPINFO m_bitmapInfo;
     HBITMAP m_bitmap;
     HDC m_bitmapDc;
+    std::string m_name;
 
+    static uint32_t m_nextId;
     static std::map<HWND, WinIO*> m_instances;
     static LRESULT CALLBACK wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -129,7 +135,7 @@ class WinIO {
     }
 };
 
-TCHAR WinIO::ClassName[] = _T("WinIO");
+uint32_t WinIO::m_nextId = 0;
 std::map<HWND, WinIO*> WinIO::m_instances{};
 
 LRESULT CALLBACK WinIO::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
