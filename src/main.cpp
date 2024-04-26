@@ -1,3 +1,5 @@
+#include <windows.h>
+#include <tchar.h>
 #include <iostream>
 #include <array>
 #include <fstream>
@@ -7,8 +9,149 @@
 #include <thread>
 #include <cmath>
 #include <cstring>
+#include <map>
+
+#undef near
+#undef far
 
 const double PI = 3.14159265359;
+
+class WinIO {
+  public:
+    WinIO(int width, int height)
+      : m_hasClosed(false)
+      , m_width(width)
+      , m_height(height) {
+
+      m_hInstance = GetModuleHandle(NULL);
+
+      WNDCLASSEX wcex{};
+      wcex.cbSize         = sizeof(WNDCLASSEX);
+      wcex.style          = CS_HREDRAW | CS_VREDRAW;
+      wcex.lpfnWndProc    = WinIO::wndProc;
+      wcex.cbClsExtra     = 0;
+      wcex.cbWndExtra     = 0;
+      wcex.hInstance      = m_hInstance;
+      wcex.hIcon          = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+      wcex.hCursor        = LoadCursor(NULL, IDC_ARROW);
+      wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW + 1);
+      wcex.lpszMenuName   = NULL;
+      wcex.lpszClassName  = ClassName;
+      wcex.hIconSm        = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+
+      if (!RegisterClassEx(&wcex)) {
+        throw std::runtime_error("Error creating window; Failed to register window class");
+      }
+
+      const TCHAR title[] = _T("Teapot");
+
+      m_hWnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, ClassName, title, WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, m_width, m_height, NULL, NULL, m_hInstance, NULL);
+
+      if (!m_hWnd) {
+        throw std::runtime_error("Error creating window");
+      }
+
+      ShowWindow(m_hWnd, SW_SHOW);
+      UpdateWindow(m_hWnd);
+      SetForegroundWindow(m_hWnd);
+      SetFocus(m_hWnd);
+
+      m_bitmapInfo.bmiHeader.biSize = sizeof(m_bitmapInfo.bmiHeader);
+      m_bitmapInfo.bmiHeader.biWidth = m_width;
+      m_bitmapInfo.bmiHeader.biHeight = m_height;
+      m_bitmapInfo.bmiHeader.biPlanes = 1;
+      m_bitmapInfo.bmiHeader.biBitCount = 32;
+      m_bitmapInfo.bmiHeader.biCompression = BI_RGB;
+      m_bitmapInfo.bmiHeader.biSizeImage = 0;
+      m_bitmapInfo.bmiHeader.biXPelsPerMeter = 1;
+      m_bitmapInfo.bmiHeader.biYPelsPerMeter = 1;
+      m_bitmapInfo.bmiHeader.biClrUsed = 0;
+      m_bitmapInfo.bmiHeader.biClrImportant = 0;
+
+      m_bitmap = CreateCompatibleBitmap(GetDC(m_hWnd), m_width, m_height);
+      m_bitmapDc = CreateCompatibleDC(GetDC(m_hWnd));
+      SelectObject(m_bitmapDc, m_bitmap);
+
+      m_instances[m_hWnd] = this;
+    }
+
+    bool update() {
+      MSG msg;
+
+      InvalidateRect(m_hWnd, NULL, FALSE);
+
+      while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+      }
+
+      return !m_hasClosed;
+    }
+
+    void setImage(const void* data) {
+      SetDIBits(m_bitmapDc, m_bitmap, 0, m_height, data, &m_bitmapInfo, DIB_RGB_COLORS);
+    }
+
+    ~WinIO() {
+      if (m_hWnd) {
+        m_instances.erase(m_hWnd);
+        DestroyWindow(m_hWnd);
+      }
+
+      UnregisterClass(ClassName, m_hInstance);
+    }
+
+  private:
+    static TCHAR ClassName[];
+
+    bool m_hasClosed;
+    HWND m_hWnd;
+    HINSTANCE m_hInstance;
+    int m_width;
+    int m_height;
+    BITMAPINFO m_bitmapInfo;
+    HBITMAP m_bitmap;
+    HDC m_bitmapDc;
+
+    static std::map<HWND, WinIO*> m_instances;
+    static LRESULT CALLBACK wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+    void render() {
+      PAINTSTRUCT ps;
+      HDC hdc = BeginPaint(m_hWnd, &ps);
+
+      BitBlt(hdc, 0, 0, m_width, m_height, m_bitmapDc, 0, 0, SRCCOPY);
+
+      EndPaint(m_hWnd, &ps);
+    }
+
+    void onClose() {
+      m_hasClosed = true;
+    }
+};
+
+TCHAR WinIO::ClassName[] = _T("WinIO");
+std::map<HWND, WinIO*> WinIO::m_instances{};
+
+LRESULT CALLBACK WinIO::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+  if (m_instances.count(hWnd)) {
+    WinIO& window = *m_instances.at(hWnd);
+
+    switch (uMsg) {
+      case WM_PAINT: {
+        window.render();
+        return 0;
+      }
+      case WM_CLOSE: {
+        window.onClose();
+      }
+      default: {}
+    }
+  }
+
+  return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
 
 struct Vec4f {
   double x;
@@ -95,6 +238,28 @@ class Mat4 {
     std::array<double, 4 * 4> m_data;
 };
 
+struct Bitmap {
+  Bitmap(int width, int height)
+    : width(width)
+    , height(height)
+    , data(width * height * 4) {}
+
+  uint32_t width;
+  uint32_t height;
+  std::vector<uint8_t> data;
+
+  void clear() {
+    memset(data.data(), 0, width * height * 4);
+  }
+
+  void setPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
+    data[y * width * 4 + x * 4 + 0] = b;
+    data[y * width * 4 + x * 4 + 1] = g;
+    data[y * width * 4 + x * 4 + 2] = r;
+    data[y * width * 4 + x * 4 + 3] = 1;
+  }
+};
+
 Mat4 constructModelMatrix(const Vec3f& t, double a) {
   Mat4 m{{
     cos(a), 0.0, sin(a), t.x,
@@ -170,41 +335,30 @@ std::vector<Vec4f> loadModel(const std::string& path) {
   return model;
 }
 
-void drawScene(const std::vector<Vec2f>& projection) {
-  const uint32_t w = 120;
-  const uint32_t h = 40;
-
-  std::array<int, w * h> bitmap;
-  memset(bitmap.data(), 0, bitmap.size() * sizeof(int));
+void drawScene(const std::vector<Vec2f>& projection, Bitmap& canvas) {
+  canvas.clear();
 
   for (auto pt : projection) {
-    uint32_t x = static_cast<uint32_t>(w * ((pt.x + 1.0) / 2.0) + 0.5);
-    uint32_t y = static_cast<uint32_t>(h * ((pt.y + 1.0) / 2.0) + 0.5);
+    uint32_t x = static_cast<uint32_t>(canvas.width * ((pt.x + 1.0) / 2.0) + 0.5);
+    uint32_t y = static_cast<uint32_t>(canvas.height * ((pt.y + 1.0) / 2.0) + 0.5);
 
-    if (x < w && y < h) {
-      bitmap[y * w + x] = 1;
+    if (x < canvas.width && y < canvas.height) {
+      canvas.setPixel(x, y, 0, 255, 0);
     }
-  }
-
-#ifdef _WIN32
-  std::system("cls");
-#else
-  std::system("clear");
-#endif
-
-  for (int j = h - 1; j >= 0; --j) {
-    for (uint32_t i = 0; i < w; ++i) {
-      int px = bitmap[j * w + i];
-      std::cout << (px == 1 ? '*' : ' ');
-    }
-    std::cout << "\n";
   }
 }
 
 int main() {
+  const int width = 640;
+  const int height = 480;
+
   try {
-    const auto dt = std::chrono::milliseconds{100};
-    const double da = 0.1 * PI;
+    WinIO window(width, height);
+
+    const long fps = 30;
+    const double revsPerSecond = 1.0;
+    const auto dt = std::chrono::milliseconds{1000 / fps};
+    const double da = (2.0 * PI / fps) * revsPerSecond;
     double angle = 0.0;
     double xOffset = 0.0;
     double yOffset = -2.0;
@@ -215,7 +369,9 @@ int main() {
 
     std::vector<Vec4f> model = loadModel("teapot.obj");
 
-    while (true) {
+    Bitmap canvas(width, height);
+
+    while (window.update()) {
       std::vector<Vec2f> projection;
       for (auto& v : model) {
         Vec4f p = projectionTransform * (viewTransform * (modelTransform * v));
@@ -229,7 +385,8 @@ int main() {
         }
       }
 
-      drawScene(projection);
+      drawScene(projection, canvas);
+      window.setImage(canvas.data.data());
 
       std::this_thread::sleep_for(dt);
 
